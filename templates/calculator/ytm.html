@@ -1,0 +1,28 @@
+<div class="mt-5">
+    <h3 class="display-6">YTM</h3>
+    <form method="POST" action="/calculator/ytm">
+        <div class="mb-3">
+            <div class="mb-3">
+                <input type="number" name="maturidade" required class="form-control" placeholder="Maturidade">
+            </div>
+            <div class="mb-3">
+                <input type="number" name="preco" required class="form-control" placeholder="Preço">
+            </div>
+            <div class="mb-3">
+                <input type="number" name="cupom" required class="form-control" placeholder="Cupom">
+            </div>
+            <div class="mb-3">
+                <input type="number" name="valor_face" required class="form-control" placeholder="Valor de Face">
+            </div>
+            <button type="submit" class="btn btn-primary">Calcular</button>
+        </div>
+    </form>
+
+    {% if ytm %}
+    <div class="bg-dark border border-2 rounded text-white">
+        <div class="m-1 ml-2">
+            <div>YTM: {{ ytm }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>

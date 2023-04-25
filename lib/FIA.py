@@ -41,11 +41,10 @@ except ImportError:
     print("Plotting functions inoperable")
     HASMATPLOTLIB = 0
 
-#Interpolator classes needed for yield curves
+
+# Interpolator classes needed for yield curves
 class abstract_interpolator:
-
-    def __init__(self, xvals = [], yvals = []):
-
+    def __init__(self, xvals=[], yvals=[]):
         # Check that xvalues and yvalues have same length
         self.length = len(xvals)
         if self.length != len(yvals):
@@ -56,7 +55,7 @@ class abstract_interpolator:
         temp.sort()
         if temp != xvals:
             print("Warning: xvalues out of order")
-        
+
         self.abscissae = xvals.copy()
         self.ordinates = yvals.copy()
 
@@ -72,40 +71,43 @@ class abstract_interpolator:
 
     def get_ordinates(self):
         return self.ordinates
-    
+
     def __len__(self):
         return self.length
 
 
 class pwlinear_interpolator(abstract_interpolator):
-
     def eval(self, x):
         if self.length == 0:
             print("Empty interpolator")
             return
-        
+
         boolvect = [(x <= abscissa) for abscissa in self.abscissae]
         try:
             index = boolvect.index(True)
         except ValueError:
             print("Warning: extrapolating outside range")
             return self.ordinates[self.length - 1]
-        
+
         if index == 0:
             return self.ordinates[0]
         else:
-            alpha = (x - self.abscissae[index - 1]) / (self.abscissae[index] - self.abscissae[index - 1])
-            return (1.0 - alpha)*self.ordinates[index - 1] + alpha * self.ordinates[index]
+            alpha = (x - self.abscissae[index - 1]) / (
+                self.abscissae[index] - self.abscissae[index - 1]
+            )
+            return (1.0 - alpha) * self.ordinates[index - 1] + alpha * self.ordinates[
+                index
+            ]
 
-    def delta(self, x, bump_index):  #Delta wrt benchmarks
+    def delta(self, x, bump_index):  # Delta wrt benchmarks
         if self.length == 0:
             print("Empty interpolator")
             return
-        
+
         if bump_index >= self.length:
             print("Index out of range")
             return
-        
+
         if self.length == 1:
             return 1.0
 
@@ -116,11 +118,13 @@ class pwlinear_interpolator(abstract_interpolator):
             print("Warning: extrapolating outside range")
             return_val = 1.0 if bump_index == (self.length - 1) else 0.0
             return return_val
-        
+
         if bump_index < index - 1 or bump_index > index:
             return 0.0
 
-        alpha = (x - self.abscissae[index -1])/(self.abscissae[index] - self.abscissae[index - 1])
+        alpha = (x - self.abscissae[index - 1]) / (
+            self.abscissae[index] - self.abscissae[index - 1]
+        )
         if bump_index == (index - 1):
             return 1.0 - alpha
         if bump_index == index:
@@ -130,156 +134,178 @@ class pwlinear_interpolator(abstract_interpolator):
         new_interpolator = pwlinear_interpolator(self.abscissae, self.ordinates)
         return new_interpolator
 
-class catmull_rom_interpolator(abstract_interpolator):
 
-    def __init__(self, xvals = [], yvals = []):
+class catmull_rom_interpolator(abstract_interpolator):
+    def __init__(self, xvals=[], yvals=[]):
         abstract_interpolator.__init__(self, xvals, yvals)
 
         A = [0] * 4
         self.coefficients = []
 
-        beta = (self.abscissae[1] - self.abscissae[0]) \
-            / (self.abscissae[2] - self.abscissae[0])
+        beta = (self.abscissae[1] - self.abscissae[0]) / (
+            self.abscissae[2] - self.abscissae[0]
+        )
 
-
-        A[0] = (1.0 - beta) * self.ordinates[0] \
-               - self.ordinates[1] \
-               + beta * self.ordinates[2]
-        A[1] = (-1.0 + beta) * self.ordinates[0] \
-               + self.ordinates[1] \
-               - beta * self.ordinates[2]
-        A[2] = -self.ordinates[0] \
-               + self.ordinates[1]
+        A[0] = (
+            (1.0 - beta) * self.ordinates[0]
+            - self.ordinates[1]
+            + beta * self.ordinates[2]
+        )
+        A[1] = (
+            (-1.0 + beta) * self.ordinates[0]
+            + self.ordinates[1]
+            - beta * self.ordinates[2]
+        )
+        A[2] = -self.ordinates[0] + self.ordinates[1]
         A[3] = self.ordinates[0]
 
         self.coefficients.append(A.copy())
 
+        for i in range(1, self.length - 2):
+            alpha = (self.abscissae[i + 1] - self.abscissae[i]) / (
+                self.abscissae[i + 1] - self.abscissae[i - 1]
+            )
+            beta = (self.abscissae[i + 1] - self.abscissae[i]) / (
+                self.abscissae[i + 2] - self.abscissae[i]
+            )
 
-        for i in range(1, self.length-2):
-            alpha = (self.abscissae[i+1] - self.abscissae[i]) \
-                / (self.abscissae[i+1] - self.abscissae[i-1])
-            beta = (self.abscissae[i+1] - self.abscissae[i]) \
-                / (self.abscissae[i+2] - self.abscissae[i])
-            
-            A[0] = -alpha * self.ordinates[i-1] \
-                   + (2.0 - beta) * self.ordinates[i] \
-                   + (-2.0 + alpha) * self.ordinates[i+1] \
-                   + beta * self.ordinates[i+2]
-            A[1] = 2.0 * alpha * self.ordinates[i-1] \
-                   + (beta - 3.0) * self.ordinates[i] \
-                   + (3.0 - 2.0 * alpha) * self.ordinates[i+1] \
-                   - beta * self.ordinates[i+2]
-            A[2] = -alpha * self.ordinates[i-1] \
-                   + alpha * self.ordinates[i+1]
+            A[0] = (
+                -alpha * self.ordinates[i - 1]
+                + (2.0 - beta) * self.ordinates[i]
+                + (-2.0 + alpha) * self.ordinates[i + 1]
+                + beta * self.ordinates[i + 2]
+            )
+            A[1] = (
+                2.0 * alpha * self.ordinates[i - 1]
+                + (beta - 3.0) * self.ordinates[i]
+                + (3.0 - 2.0 * alpha) * self.ordinates[i + 1]
+                - beta * self.ordinates[i + 2]
+            )
+            A[2] = -alpha * self.ordinates[i - 1] + alpha * self.ordinates[i + 1]
             A[3] = self.ordinates[i]
 
             self.coefficients.append(A.copy())
 
-        alpha = (self.abscissae[self.length - 1] - self.abscissae[self.length - 2]) \
-            / (self.abscissae[self.length - 1] - self.abscissae[self.length - 3])
+        alpha = (self.abscissae[self.length - 1] - self.abscissae[self.length - 2]) / (
+            self.abscissae[self.length - 1] - self.abscissae[self.length - 3]
+        )
 
-
-        A[0] = -alpha * self.ordinates[self.length - 3] \
-               + self.ordinates[self.length - 2] \
-               + (-1.0 + alpha) * self.ordinates[self.length - 1]
-        A[1] = 2.0 * alpha * self.ordinates[self.length - 3] \
-               - 2.0 * self.ordinates[self.length - 2] \
-               + (2.0 - 2.0 * alpha) * self.ordinates[self.length - 1]
-        A[2] = -alpha * self.ordinates[self.length - 3] \
-               + alpha * self.ordinates[self.length - 1]
+        A[0] = (
+            -alpha * self.ordinates[self.length - 3]
+            + self.ordinates[self.length - 2]
+            + (-1.0 + alpha) * self.ordinates[self.length - 1]
+        )
+        A[1] = (
+            2.0 * alpha * self.ordinates[self.length - 3]
+            - 2.0 * self.ordinates[self.length - 2]
+            + (2.0 - 2.0 * alpha) * self.ordinates[self.length - 1]
+        )
+        A[2] = (
+            -alpha * self.ordinates[self.length - 3]
+            + alpha * self.ordinates[self.length - 1]
+        )
         A[3] = self.ordinates[self.length - 2]
 
         self.coefficients.append(A.copy())
-
 
     def eval(self, x):
         if self.length == 0:
             print("Empty interpolator")
             return
-        
+
         boolvect = [(x <= abscissa) for abscissa in self.abscissae]
         try:
             index = boolvect.index(True)
         except ValueError:
             print("Warning: extrapolating outside range")
             return self.ordinates[self.length - 1]
-        
+
         if index == 0:
             return self.ordinates[0]
         else:
-            delta = (x - self.abscissae[index - 1]) / (self.abscissae[index] - self.abscissae[index - 1])
-            return self.coefficients[index - 1][0] * delta**3 \
-                 + self.coefficients[index - 1][1] * delta**2 \
-                 + self.coefficients[index - 1][2] * delta \
-                 + self.coefficients[index - 1][3]
+            delta = (x - self.abscissae[index - 1]) / (
+                self.abscissae[index] - self.abscissae[index - 1]
+            )
+            return (
+                self.coefficients[index - 1][0] * delta**3
+                + self.coefficients[index - 1][1] * delta**2
+                + self.coefficients[index - 1][2] * delta
+                + self.coefficients[index - 1][3]
+            )
 
-    
     def delta(self, x, bump_index):
         pass
 
-    
     def copy(self):
         new_interpolator = catmull_rom_interpolator(self.abscissae, self.ordinates)
         return new_interpolator
 
-class natural_spline_interpolator(abstract_interpolator):
 
+class natural_spline_interpolator(abstract_interpolator):
     def __init__(self, xvals=[], yvals=[]):
         abstract_interpolator.__init__(self, xvals, yvals)
 
         lhs_matrix = np.zeros([self.length, self.length])
-        
-        lhs_matrix[0,0] = 1.0
-        
-        for i in range(1, self.length-1):
-            lhs_matrix[i, i-1] = (self.abscissae[i] - self.abscissae[i-1]) / 6.0
-            lhs_matrix[i, i] = (self.abscissae[i+1] - self.abscissae[i-1]) / 3.0
-            lhs_matrix[i, i+1] = (self.abscissae[i+1] - self.abscissae[i]) / 6.0
-        
+
+        lhs_matrix[0, 0] = 1.0
+
+        for i in range(1, self.length - 1):
+            lhs_matrix[i, i - 1] = (self.abscissae[i] - self.abscissae[i - 1]) / 6.0
+            lhs_matrix[i, i] = (self.abscissae[i + 1] - self.abscissae[i - 1]) / 3.0
+            lhs_matrix[i, i + 1] = (self.abscissae[i + 1] - self.abscissae[i]) / 6.0
+
         lhs_matrix[self.length - 1, self.length - 1] = 1.0
 
         rhs = np.zeros([self.length])
 
         for i in range(1, self.length - 1):
-            rhs[i] = (self.ordinates[i+1] - self.ordinates[i]) / (self.abscissae[i+1] - self.abscissae[i]) \
-                   - (self.ordinates[i] - self.ordinates[i-1]) / (self.abscissae[i] - self.abscissae[i-1])
-        
+            rhs[i] = (self.ordinates[i + 1] - self.ordinates[i]) / (
+                self.abscissae[i + 1] - self.abscissae[i]
+            ) - (self.ordinates[i] - self.ordinates[i - 1]) / (
+                self.abscissae[i] - self.abscissae[i - 1]
+            )
+
         self.fprimeprime = np.linalg.solve(lhs_matrix, rhs)
 
     def eval(self, x):
         if self.length == 0:
             print("Empty interpolator")
             return
-        
+
         boolvect = [(x <= abscissa) for abscissa in self.abscissae]
         try:
             index = boolvect.index(True)
         except ValueError:
             print("Warning: extrapolating outside range")
             return self.ordinates[self.length - 1]
-        
+
         if index == 0:
             return self.ordinates[0]
         else:
             xplus = self.abscissae[index] - x
             xminus = x - self.abscissae[index - 1]
             h = self.abscissae[index] - self.abscissae[index - 1]
-            return self.fprimeprime[index - 1] * xplus**3 / h / 6.0 \
-                 + self.fprimeprime[index] * xminus**3 / h / 6.0 \
-                 + (self.ordinates[index - 1] / h - h * self.fprimeprime[index - 1] / 6.0) * xplus \
-                 + (self.ordinates[index] / h - h * self.fprimeprime[index] / 6.0) * xminus
+            return (
+                self.fprimeprime[index - 1] * xplus**3 / h / 6.0
+                + self.fprimeprime[index] * xminus**3 / h / 6.0
+                + (
+                    self.ordinates[index - 1] / h
+                    - h * self.fprimeprime[index - 1] / 6.0
+                )
+                * xplus
+                + (self.ordinates[index] / h - h * self.fprimeprime[index] / 6.0)
+                * xminus
+            )
 
-    
     def delta(self, x, bump_index):
         pass
 
-    
     def copy(self):
         new_interpolator = natural_spline_interpolator(self.abscissae, self.ordinates)
         return new_interpolator
 
 
-#Newton solver for extending curve by 1 tenor
+# Newton solver for extending curve by 1 tenor
 def solver(interpolator, bond):
     tolerance = 0.000001
 
@@ -298,13 +324,13 @@ def solver(interpolator, bond):
         _interpolator = interpolator.copy()
         _interpolator.extend(maturity, eta)
 
-        sum = - price
+        sum = -price
 
         for i in range(len(dates)):
-            sum += math.exp(- _interpolator.eval(dates[i]) * dates[i]) * coupons[i]
+            sum += math.exp(-_interpolator.eval(dates[i]) * dates[i]) * coupons[i]
 
         return sum
-    
+
     def Fprime(eta):
         _interpolator = interpolator.copy()
         _interpolator.extend(maturity, eta)
@@ -314,22 +340,26 @@ def solver(interpolator, bond):
         sum = 0.0
 
         for i in range(len(dates)):
-            sum += _interpolator.delta(dates[i], max_index) * dates[i] * \
-                math.exp(- _interpolator.eval(dates[i]) * dates[i]) * coupons[i]
-        
-        return - sum
+            sum += (
+                _interpolator.delta(dates[i], max_index)
+                * dates[i]
+                * math.exp(-_interpolator.eval(dates[i]) * dates[i])
+                * coupons[i]
+            )
+
+        return -sum
 
     old_eta = 0.0
-    new_eta = old_eta - F(old_eta)/Fprime(old_eta)
+    new_eta = old_eta - F(old_eta) / Fprime(old_eta)
 
     while abs(new_eta - old_eta) > tolerance:
         old_eta = new_eta
-        new_eta = old_eta - F(old_eta)/Fprime(old_eta)
+        new_eta = old_eta - F(old_eta) / Fprime(old_eta)
 
     return new_eta
 
 
-#Class for yield curves
+# Class for yield curves
 class curve:
     """
     Class for yield curves
@@ -354,7 +384,7 @@ class curve:
         self.length = 0
         self.interpolator = None
 
-    def build_from_rates(self, dates, rates, method = "pwlinear"):
+    def build_from_rates(self, dates, rates, method="pwlinear"):
         if self.length > 0:
             print("Curve is already built")
             return
@@ -362,7 +392,7 @@ class curve:
         if len(dates) != len(rates):
             print("Rate and tenor vectors of unequal lengths")
             return
-        
+
         self.tenors = dates.copy()
         self.rates = rates.copy()
         self.length = len(dates)
@@ -374,10 +404,12 @@ class curve:
         elif method == "natural":
             self.interpolator = natural_spline_interpolator(dates, rates)
         else:
-            print("Unrecognized interpolation method.  Defaulting to piecewise linear interpolation")
+            print(
+                "Unrecognized interpolation method.  Defaulting to piecewise linear interpolation"
+            )
             self.interpolator = pwlinear_interpolator(dates, rates)
 
-    def build_from_bonds(self, bond_list, method = "pwlinear"):
+    def build_from_bonds(self, bond_list, method="pwlinear"):
         if self.length > 0:
             print("Curve is already built")
             return
@@ -387,12 +419,14 @@ class curve:
         def get_max_date(bond):
             return bond.get_maturity()
 
-        bond_list.sort(key = get_max_date)
+        bond_list.sort(key=get_max_date)
 
         if method == "pwlinear":
             self.interpolator = pwlinear_interpolator()
         else:
-            print("Only piecewise linear interpolation is available for building curve from bond prices")
+            print(
+                "Only piecewise linear interpolation is available for building curve from bond prices"
+            )
             print("Reverting to piecewise linear interpolation")
             self.interpolator = pwlinear_interpolator()
 
@@ -403,7 +437,6 @@ class curve:
             self.rates.append(new_rate)
             self.length += 1
 
-
     def build_nelson_siegel(self, dates, rates, tau=2.5):
         if self.length > 0:
             print("Curve is already built")
@@ -412,7 +445,7 @@ class curve:
         if len(dates) != len(rates):
             print("Rate and tenor vectors of unequal lengths")
             return
-        
+
         self.tenors = dates.copy()
         self.rates = rates.copy()
         self.length = len(dates)
@@ -421,11 +454,12 @@ class curve:
 
         loadings = np.ones([self.length, self.length, self.length])
         for i in range(self.length):
-            loadings[i,1] = (1.0 - exp(-tau * dates[i]))/tau/dates[i]
-            loadings[i,2] = (1.0 - exp(-tau * dates[i]))/tau/dates[i] - exp(-tau * dates[i])
-        
-        beta = np.linalg.lstsq(loadings, ordinates)
+            loadings[i, 1] = (1.0 - exp(-tau * dates[i])) / tau / dates[i]
+            loadings[i, 2] = (1.0 - exp(-tau * dates[i])) / tau / dates[i] - exp(
+                -tau * dates[i]
+            )
 
+        beta = np.linalg.lstsq(loadings, ordinates)
 
     def get_rates(self):
         """
@@ -442,7 +476,7 @@ class curve:
         """
         rates = []
         for rate in self.rates:
-            rates.append(rate*100)
+            rates.append(rate * 100)
         return rates
 
     def get_tenors(self):
@@ -479,9 +513,9 @@ class curve:
         for i in range(self.length):
             new_rates.append(self.rates[i] + delta)
         new_curve = curve()
-        new_curve.build_from_rates(rates = new_rates, dates = self.tenors)
+        new_curve.build_from_rates(rates=new_rates, dates=self.tenors)
         return new_curve
-    
+
     def bump(self, delta, index):
         """
         Shifts one benchmark rate from the rates list.
@@ -498,15 +532,13 @@ class curve:
             A new curve object with the bumped rate
         """
 
-
         delta /= 100
         new_rates = self.rates.copy()
         new_rates[index] += delta
         new_curve = curve()
-        new_curve.build_from_rates(rates = new_rates, dates = self.tenors)
+        new_curve.build_from_rates(rates=new_rates, dates=self.tenors)
         return new_curve
- 
-    
+
     def get_yield(self, time):
         """
         Evaluates and returns the continuously compounded spot rate for a given tenor.
@@ -538,23 +570,24 @@ class curve:
             The implied discount factor at the chosen tenor.
         """
         return math.exp(-self.interpolator.eval(time) * time)
-    
+
     def ddr(self, time, compounding=1):
         if compounding == 0:
             exponent = 1.0
         else:
-            exponent = 1.0 + 1.0/time/compounding
+            exponent = 1.0 + 1.0 / time / compounding
 
-        return -time * self.discount_factor(time)**exponent
+        return -time * self.discount_factor(time) ** exponent
 
     def ddr2(self, time, compounding=1):
         if compounding == 0:
             return time**2 * self.discount_factor(time)
         else:
-            exponent = 1.0 + 2.0/time/compounding
+            exponent = 1.0 + 2.0 / time / compounding
 
-        return time * (time + 1.0/compounding) * self.discount_factor(time)**exponent
-
+        return (
+            time * (time + 1.0 / compounding) * self.discount_factor(time) ** exponent
+        )
 
     def spot_rate(self, time, compounding=1):
         """
@@ -572,17 +605,17 @@ class curve:
         float
             The requested spot rate.
         """
-        
+
         if compounding == 0:
-            return 100 * (1.0/self.discount_factor(time)-1.0)/time
-        
+            return 100 * (1.0 / self.discount_factor(time) - 1.0) / time
+
         if compounding > 0:
             df = self.discount_factor(time)
-            return 100 * compounding * (df**(-1.0/compounding/time) - 1.0)
-        
+            return 100 * compounding * (df ** (-1.0 / compounding / time) - 1.0)
+
         print("Invalid compounding convention")
         return
-    
+
     def forward_rate(self, start, maturity, compounding=1):
         """
         Evaluates and returns the implied forward rate for a given start, maturity, and
@@ -604,18 +637,22 @@ class curve:
         if not (maturity > start):
             print("Maturity date must be later than start date")
             return
-        
+
         if compounding == 0:
             y1 = self.interpolator.eval(start)
             y2 = self.interpolator.eval(maturity)
             return 100 * (maturity * y2 - start * y1) / (maturity - start)
-        
+
         if compounding > 0:
             df1 = self.discount_factor(start)
             df2 = self.discount_factor(maturity)
-            return 100 * compounding * ((df1/df2)**(1.0/compounding/(maturity - start)) - 1.0)
-        
-        print ("Invalid compounding convention")
+            return (
+                100
+                * compounding
+                * ((df1 / df2) ** (1.0 / compounding / (maturity - start)) - 1.0)
+            )
+
+        print("Invalid compounding convention")
         return
 
     def copy(self):
@@ -632,7 +669,7 @@ class curve:
             List of defining interest rates in the rates attribute
         """
         new_curve = curve()
-        new_curve.build_from_rates(rates = self.rates, dates = self.tenors)
+        new_curve.build_from_rates(rates=self.rates, dates=self.tenors)
         return new_curve
 
     def __len__(self):
@@ -657,36 +694,33 @@ class curve:
         if not HASMATPLOTLIB:
             print("Plotting functions require Matplotlib")
             return
-        
+
         if max_tenor <= 0:
             max_tenor = max(self.tenors)
-        
-        fig = plt.figure() 
-        ax = fig.subplots()
 
+        fig = plt.figure()
+        ax = fig.subplots()
 
         t = np.arange(0.1, max_tenor, 0.1)
 
-
-        y=[]
+        y = []
         for tenor in t:
             if compounding == 0:
                 yld = self.get_yield(tenor)
             else:
                 yld = self.spot_rate(tenor, compounding)
             y.append(yld)
-        
+
         yields = np.array(y)
 
         ax.ticklabel_format(useOffset=False)
         ax.plot(t, yields)
         minyield = yields.min()
-        maxyield= yields.max()
-        ax.set_ylim([minyield-1, maxyield+1])
+        maxyield = yields.max()
+        ax.set_ylim([minyield - 1, maxyield + 1])
 
-        ax.set(xlabel='tenor', ylabel='yield',
-            title = 'Yields')
-        
+        ax.set(xlabel="tenor", ylabel="yield", title="Yields")
+
         plt.show(block=False)
 
     def plot_discount_factors(self, max_tenor=0):
@@ -705,7 +739,7 @@ class curve:
         if not HASMATPLOTLIB:
             print("Plotting functions require Matplotlib")
             return
-        
+
         if max_tenor <= 0:
             max_tenor = max(self.tenors)
 
@@ -713,18 +747,17 @@ class curve:
 
         t = np.arange(0.0, max_tenor, 0.1)
 
-        d=[]
+        d = []
         for tenor in t:
             yld = self.discount_factor(tenor)
             d.append(yld)
-        
+
         dfs = np.array(d)
 
         ax.plot(t, dfs)
 
-        ax.set(xlabel='tenor', ylabel='discount factor',
-            title = 'Discount Factors')
-        
+        ax.set(xlabel="tenor", ylabel="discount factor", title="Discount Factors")
+
         plt.show(block=False)
 
     def plot_forwards(self, start, maturity=0, compounding=1):
@@ -749,34 +782,32 @@ class curve:
 
         if maturity <= 0:
             maturity = max(self.tenors)
-        
+
         if maturity <= start:
             print("Maturity must follow start")
             return
 
         fig, ax = plt.subplots()
 
-        t = np.arange(start+0.1, maturity, 0.1)
+        t = np.arange(start + 0.1, maturity, 0.1)
 
         f = []
         for tenor in t:
             rate = self.forward_rate(start, tenor, compounding)
             f.append(rate)
-        
+
         forward_rates = np.array(f)
 
         ax.plot(t, forward_rates)
 
-        ax.set(xlabel='tenor', ylabel='forward rate',
-            title = 'Forward Rates')
-        
+        ax.set(xlabel="tenor", ylabel="forward rate", title="Forward Rates")
+
         plt.show(block=False)
 
 
-#Classes for bonds
+# Classes for bonds
 class abstract_bond:
-
-    def __init__(self, rates = [], times = [], price = None):
+    def __init__(self, rates=[], times=[], price=None):
         self.coupons = rates
         self.dates = times
         self.length = len(rates)
@@ -786,15 +817,15 @@ class abstract_bond:
         if len(rates) == 0:
             print("No coupons given")
             return
-        
+
         if len(rates) != len(dates):
             print("Coupon and tenor vectors incommensurate")
             return
-        
+
         self.coupons = rates
         self.dates = dates
         self.length = len(rates)
-    
+
     def get_cashflows(self):
         """
         Returns the list of stored coupons,
@@ -809,7 +840,7 @@ class abstract_bond:
             The coupons list attribute.
         """
         return self.coupons
-    
+
     def get_dates(self):
         """
         Returns the stored list of payment dates.
@@ -839,7 +870,7 @@ class abstract_bond:
             The maximum date of the dates list attribute.
         """
         return max(self.dates)
-    
+
     def get_price(self):
         """
         Returns the stored market price of the bond.
@@ -859,7 +890,7 @@ class abstract_bond:
         else:
             return self.market_price
 
-    def set_price(self,price):
+    def set_price(self, price):
         """
         Sets the stored market price
 
@@ -873,7 +904,7 @@ class abstract_bond:
         None.
         """
         self.market_price = price
-    
+
     def __len__(self):
         return self.length
 
@@ -892,7 +923,7 @@ class abstract_bond:
         if not HASMATPLOTLIB:
             print("Plotting functions require Matplotlib")
             return
-        
+
         fig, ax = plt.subplots()
 
         ax.bar(self.dates, self.coupons, width=0.2)
@@ -904,9 +935,7 @@ class abstract_bond:
         plt.show(block=False)
 
 
-
 class relative_bond(abstract_bond):
-
     def price(self, curve, date=0, compounding=0):
         """
         Prices the bond with a specified yield curve.
@@ -930,17 +959,16 @@ class relative_bond(abstract_bond):
         """
         if type(curve) == int or type(curve) == float:
             if compounding > 0:
-                y = compounding * math.log(1 + 0.01 * curve/compounding)
+                y = compounding * math.log(1 + 0.01 * curve / compounding)
             else:
                 y = 0.01 * curve
             pv = 0.0
             for i in range(self.length):
                 if self.dates[i] < date:
                     continue
-                pv += math.exp(-y * (self.dates[i] - date))*self.coupons[i]
-            
+                pv += math.exp(-y * (self.dates[i] - date)) * self.coupons[i]
+
             return pv
-        
 
         pv = 0.0
         for i in range(self.length):
@@ -952,9 +980,9 @@ class relative_bond(abstract_bond):
                 print("argument must be either a number or a curve object")
                 print("no price calculated")
                 return None
-        
+
         return pv
-    
+
     def duration(self, curve, date=0, compounding=1):
         """
         Calculates the duration of the bond with the inputted yield
@@ -979,14 +1007,14 @@ class relative_bond(abstract_bond):
         for i in range(self.length):
             if self.dates[i] < date:
                 continue
-            exponent = 1.0 + 1.0/self.dates[i]
+            exponent = 1.0 + 1.0 / self.dates[i]
             sum += curve.ddr(self.dates[i] - date, compounding) * self.coupons[i]
-        
-        return -sum/self.price(curve, date)
+
+        return -sum / self.price(curve, date)
 
     def dollar(self, curve, date=0, compounding=1):
         """
-        Calculates the dollar duration of the bond with the inputted 
+        Calculates the dollar duration of the bond with the inputted
         yield curve.
 
         Parameters
@@ -1009,14 +1037,14 @@ class relative_bond(abstract_bond):
         for i in range(self.length):
             if self.dates[i] < date:
                 continue
-            exponent = 1.0 + 1.0/self.dates[i]
+            exponent = 1.0 + 1.0 / self.dates[i]
             sum += curve.ddr(self.dates[i] - date, compounding) * self.coupons[i]
-        
+
         return -sum
 
     def macaulay(self, curve, date=0):
         """
-        Calculates the Macaulay duration of the bond with the inputted 
+        Calculates the Macaulay duration of the bond with the inputted
         yield curve.
 
         Parameters
@@ -1036,13 +1064,17 @@ class relative_bond(abstract_bond):
         for i in range(self.length):
             if self.dates[i] < date:
                 continue
-            sum += (self.dates[i] - date) * curve.discount_factor(self.dates[i] - date) * self.coupons[i]
-        
-        return sum/self.price(curve, date)
+            sum += (
+                (self.dates[i] - date)
+                * curve.discount_factor(self.dates[i] - date)
+                * self.coupons[i]
+            )
+
+        return sum / self.price(curve, date)
 
     def dispersion(self, curve, date=0):
         """
-        Calculates the dispersion of the bond with the inputted yield 
+        Calculates the dispersion of the bond with the inputted yield
         curve.
 
         Parameters
@@ -1063,10 +1095,13 @@ class relative_bond(abstract_bond):
         for i in range(self.length):
             if self.dates[i] < date:
                 continue
-            sum += (self.dates[i] - date -  duration)**2 \
-                 * curve.discount_factor(self.dates[i] - date) * self.coupons[i]
-        
-        return sum/self.price(curve, date)
+            sum += (
+                (self.dates[i] - date - duration) ** 2
+                * curve.discount_factor(self.dates[i] - date)
+                * self.coupons[i]
+            )
+
+        return sum / self.price(curve, date)
 
     def convexity(self, curve, date=0, compounding=1):
         """
@@ -1093,10 +1128,10 @@ class relative_bond(abstract_bond):
         for i in range(self.length):
             if self.dates[i] < date:
                 continue
-            exponent = 1.0 + 1.0/self.dates[i]
+            exponent = 1.0 + 1.0 / self.dates[i]
             sum += curve.ddr2(self.dates[i] - date, compounding) * self.coupons[i]
-        
-        return sum/self.price(curve, date)
+
+        return sum / self.price(curve, date)
 
     def dollar_convexity(self, curve, date=0, compounding=1):
         """
@@ -1123,9 +1158,9 @@ class relative_bond(abstract_bond):
         for i in range(self.length):
             if self.dates[i] < date:
                 continue
-            exponent = 1.0 + 1.0/self.dates[i]
+            exponent = 1.0 + 1.0 / self.dates[i]
             sum += curve.ddr2(self.dates[i] - date, compounding) * self.coupons[i]
-        
+
         return sum
 
     def YTM(self, price, **kwargs):
@@ -1150,7 +1185,7 @@ class relative_bond(abstract_bond):
 
         if price == None:
             price = self.market_price
-        
+
         if price == None:
             print("No price available")
             return
@@ -1160,16 +1195,15 @@ class relative_bond(abstract_bond):
         else:
             compounding = None
 
-
         if self.length == 1:
-            cts = -100 * math.log(price/self.coupons[0]) / self.dates[0]
+            cts = -100 * math.log(price / self.coupons[0]) / self.dates[0]
             if compounding == None:
                 return cts
             else:
-                return 100 * compounding * (math.exp(cts/100/compounding) - 1)
-        
+                return 100 * compounding * (math.exp(cts / 100 / compounding) - 1)
+
         if compounding == None:
-            compounding = round(1/(self.dates[1] - self.dates[0]))
+            compounding = round(1 / (self.dates[1] - self.dates[0]))
 
         tolerance = 0.000001
 
@@ -1177,32 +1211,31 @@ class relative_bond(abstract_bond):
             sum = 0.0
             for i in range(self.length):
                 sum += self.coupons[i] * math.exp(-y * self.dates[i])
-            
+
             return sum - price
 
         def Fprime(y):
             sum = 0.0
             for i in range(self.length):
                 sum += self.dates[i] * self.coupons[i] * math.exp(-y * self.dates[i])
-            
+
             return -sum
 
         old_y = 0.0
-        new_y = old_y - F(old_y)/Fprime(old_y)
+        new_y = old_y - F(old_y) / Fprime(old_y)
 
         while abs(new_y - old_y) > tolerance:
             old_y = new_y
-            new_y = old_y - F(old_y)/Fprime(old_y)
-        
+            new_y = old_y - F(old_y) / Fprime(old_y)
+
         if compounding == 0:
             return 100 * new_y
 
-        return 100 * compounding * (math.exp(new_y/compounding) - 1)
+        return 100 * compounding * (math.exp(new_y / compounding) - 1)
 
 
 class absolute_bond(abstract_bond):
-
-    def price(self, curve, date = 0):
+    def price(self, curve, date=0):
         pass
 
 
@@ -1246,11 +1279,11 @@ class portfolio:
         if len(labels) is not number:
             print("length of bond list and label list must be equal")
             return None
-        
+
         if allocations is not None and len(allocations) is not number:
             print("length of bond list and allocation list must be equal")
             return None
-        
+
         for i in range(len(labels)):
             if len(labels[i]) == 0:
                 labels[i] = str(self.counter)
@@ -1259,20 +1292,20 @@ class portfolio:
         if len(labels) is not len(set(labels)):
             print("duplicate labels: no bonds added")
             return None
-        
+
         for label in labels:
             if label in self.bond_array:
                 print("new label replicates existing label: no bonds added")
                 return None
-        
+
         if allocations is None:
             allocations = [1 for i in range(number)]
-        
+
         for i in range(number):
             self.bond_array[labels[i]] = bonds[i]
             self.weights[labels[i]] = allocations[i]
         self.length += number
-    
+
     def print_labels(self):
         """
         Prints out the labels of the contained bonds.
@@ -1287,7 +1320,7 @@ class portfolio:
         """
         for label in self.bond_array:
             print(label)
-    
+
     def delete_bond(self, label):
         """
         Removes a bond from the portfolio.
@@ -1304,7 +1337,7 @@ class portfolio:
         if label not in self.bond_array:
             print("label not found: no bond removed")
             return None
-        
+
         del self.bond_array[label]
         del self.weights[label]
         self.length -= 1
@@ -1336,13 +1369,15 @@ class portfolio:
 
         sum = 0.0
         for key in self.bond_array:
-            sum += self.weights[key] * self.bond_array[key].price(curve, date, compounding)
-        
+            sum += self.weights[key] * self.bond_array[key].price(
+                curve, date, compounding
+            )
+
         return sum
 
     def dollar(self, curve, date=0, compounding=1):
         """
-        Calculates the dollar duration of the portfolio with the inputted 
+        Calculates the dollar duration of the portfolio with the inputted
         yield curve.
 
         Parameters
@@ -1363,10 +1398,12 @@ class portfolio:
 
         sum = 0.0
         for key in self.bond_array:
-            sum += self.weights[key] * self.bond_array[key].dollar(curve, date, compounding)
-        
+            sum += self.weights[key] * self.bond_array[key].dollar(
+                curve, date, compounding
+            )
+
         return sum
-    
+
     def duration(self, curve, date=0, compounding=1):
         """
         Calculates the duration of the portfolio with the inputted yield
@@ -1390,14 +1427,18 @@ class portfolio:
         value = self.price(curve, date, compounding)
         w = {}
         for key in self.bond_array:
-            w[key] = self.weights[key]*self.bond_array[key].price(curve, date, compounding)/value
-        
+            w[key] = (
+                self.weights[key]
+                * self.bond_array[key].price(curve, date, compounding)
+                / value
+            )
+
         sum = 0.0
         for key in self.bond_array:
             sum += w[key] * self.bond_array[key].duration(curve, date, compounding)
-        
+
         return sum
-    
+
     def convexity(self, curve, date=0, compounding=1):
         """
         Calculates the convexity of the portfolio with the inputted yield
@@ -1422,60 +1463,63 @@ class portfolio:
         value = self.price(curve, date, compounding)
         w = {}
         for key in self.bond_array:
-            w[key] = self.weights[key]*self.bond_array[key].price(curve, date, compounding)/value
-        
+            w[key] = (
+                self.weights[key]
+                * self.bond_array[key].price(curve, date, compounding)
+                / value
+            )
+
         sum = 0.0
         for key in self.bond_array:
             sum += w[key] * self.bond_array[key].convexity(curve, date, compounding)
-        
+
         return sum
 
 
-
-#User functions for constructing yield curves and bonds
+# User functions for constructing yield curves and bonds
 def curve_factory(**kwargs):
     """
-        Main factory function for constructing curve objects.
+    Main factory function for constructing curve objects.
 
-        Parameters
-        ----------
-        Keyword Arguments:
-        The arguments must follow one of the following schemes:
-            1)
-                dates: list
-                    A list of floats representing the tenors of the benchmark rates.
-                    The units are assumed to be years.
-                rates: list
-                    A list of floats representing the benchmark interest rates from
-                    which the yield curve will be constructed by the selected
-                    interpolation method.  The rates are assumed to be continuously
-                    compounded and in percentage form.
-                compounding: integer
-                    An integer equal to the compounding frequency of the inputted
-                    rates.  Must be a positive integer.  If ommitted, the rates are
-                    treated as continuously compounded
-                method: string
-                    The selected interpolation method:
-                        "pwlinear": piecewise linear
-                        "hermite": Hermite interpolation (catmull-rom method)
-                        "natural": cubic spline with natural boundary conditions.
-                    Default is piecewise linear.
-            2)
-                bondlist: list
-                    A list of bond objects from which the curve will be bootstrapped.
-                Note: For this option, the only available interpolation method is
-                piecewise linear.
-         Returns
-        -------
-        curve
-            The constructed curve object.
+    Parameters
+    ----------
+    Keyword Arguments:
+    The arguments must follow one of the following schemes:
+        1)
+            dates: list
+                A list of floats representing the tenors of the benchmark rates.
+                The units are assumed to be years.
+            rates: list
+                A list of floats representing the benchmark interest rates from
+                which the yield curve will be constructed by the selected
+                interpolation method.  The rates are assumed to be continuously
+                compounded and in percentage form.
+            compounding: integer
+                An integer equal to the compounding frequency of the inputted
+                rates.  Must be a positive integer.  If ommitted, the rates are
+                treated as continuously compounded
+            method: string
+                The selected interpolation method:
+                    "pwlinear": piecewise linear
+                    "hermite": Hermite interpolation (catmull-rom method)
+                    "natural": cubic spline with natural boundary conditions.
+                Default is piecewise linear.
+        2)
+            bondlist: list
+                A list of bond objects from which the curve will be bootstrapped.
+            Note: For this option, the only available interpolation method is
+            piecewise linear.
+     Returns
+    -------
+    curve
+        The constructed curve object.
     """
 
     if "dates" in kwargs and "rates" in kwargs:
         if len(kwargs["dates"]) != len(kwargs["rates"]):
             print("Vector of tenors and rates not comensurate")
             return
-        
+
         rates = []
         if "compounding" in kwargs:
             k = kwargs["compounding"]
@@ -1483,19 +1527,19 @@ def curve_factory(**kwargs):
             if test < 1 or test is not k:
                 print("compounding parameter must be a positive integer")
                 return
-            
+
             for rate in kwargs["rates"]:
-                cts = k*math.log(1 + rate/100/k)
+                cts = k * math.log(1 + rate / 100 / k)
                 rates.append(cts)
         else:
             for rate in kwargs["rates"]:
-                rates.append(rate/100)
-        
+                rates.append(rate / 100)
+
         if "method" in kwargs:
             method = kwargs["method"]
         else:
             method = "pwlinear"
-        
+
         if method == "natural" and HASNUMPY == 0:
             print("Natural cubic spline interpolation requires Numpy")
             print("Reverting to piecewise linear interpolation")
@@ -1508,80 +1552,78 @@ def curve_factory(**kwargs):
 
     if "bondlist" in kwargs:
         if "method" in kwargs and kwargs["method"] is not "pwlinear":
-            print("For building curves from bonds, only piecewise linear interpolation is available")
+            print(
+                "For building curves from bonds, only piecewise linear interpolation is available"
+            )
             print("Defaulting to piecewise linear interpolation")
-        
+
         yield_curve = curve()
         yield_curve.build_from_bonds(kwargs["bondlist"])
 
         return yield_curve
 
-     
     print("Invalid inputs")
     return
 
 
 def bond_factory(dates, rates):
     """
-        Main factory function for constructing bond objects.
+    Main factory function for constructing bond objects.
 
-        Parameters
-        ----------
-        dates: list
-            A list of payment dates for the bond coupons.
-        rates: list
-            A list of the payments to be made by the bond on the dates specified in
-            the dates parameter.
+    Parameters
+    ----------
+    dates: list
+        A list of payment dates for the bond coupons.
+    rates: list
+        A list of the payments to be made by the bond on the dates specified in
+        the dates parameter.
 
-        Returns
-        -------
-        bond
-            The constructed bond object.
+    Returns
+    -------
+    bond
+        The constructed bond object.
     """
     if len(rates) != len(dates):
         print("Coupon vector not commensurate with date vector")
         return
-    
-
-
 
     if all([(type(date) == float) for date in dates]):
         bond = relative_bond(rates, dates)
         return bond
-        
+
     if all([(type(date) == dt.date) for date in dates]):
         pass
 
-    
     if all([(type(date) == str) for date in dates]):
         pass
-        
+
     print("Invalid input list")
     return
 
+
 def create_flat_curve(rate, compounding=0, max_tenor=100):
     """
-        Factory function to construct flat yield curves.
+    Factory function to construct flat yield curves.
 
-        Parameters
-        ----------
-        rate: float
-            The interest rate level of the flat curve.
-        compounding: float
-            The compounding convention of the inputted
-            rate. Defaults to continuous compounding.
-        max_tenor: float or int
-            The tenor to use as an argument to the
-            curve_factor function.  Defaults to
-            100 years.  Not essential, but convenient
-            to choose a max_tenor larger than any maturity
-            of the bonds that will be priced.
+    Parameters
+    ----------
+    rate: float
+        The interest rate level of the flat curve.
+    compounding: float
+        The compounding convention of the inputted
+        rate. Defaults to continuous compounding.
+    max_tenor: float or int
+        The tenor to use as an argument to the
+        curve_factor function.  Defaults to
+        100 years.  Not essential, but convenient
+        to choose a max_tenor larger than any maturity
+        of the bonds that will be priced.
 
-        Returns
-        -------
-        curve
-            The constructed curve object representing a flat
-            yield curve.
+    Returns
+    -------
+    curve
+        The constructed curve object representing a flat
+        yield curve.
     """
 
     if compounding < 0:
@@ -1589,30 +1631,30 @@ def create_flat_curve(rate, compounding=0, max_tenor=100):
         print("reverting to continuous compounding")
 
     if compounding > 0:
-        rate = compounding * 100 * math.log(1 + rate/compounding/100)
-    
+        rate = compounding * 100 * math.log(1 + rate / compounding / 100)
+
     return curve_factory(dates=[max_tenor], rates=[rate])
 
 
 def create_coupon_bond(maturity, face, frequency, rate=0):
     """
-        Factory function for constructing coupon bonds.
+    Factory function for constructing coupon bonds.
 
-        Parameters
-        ----------
-        maturity: float
-            The maturity date of the bond.
-        face: float
-            The face value of the bond.
-        rate: float
-            The coupon rate of the bond, as a percentage.
-        frequency: int
-            The annual frequency of coupon payments.
+    Parameters
+    ----------
+    maturity: float
+        The maturity date of the bond.
+    face: float
+        The face value of the bond.
+    rate: float
+        The coupon rate of the bond, as a percentage.
+    frequency: int
+        The annual frequency of coupon payments.
 
-        Returns
-        -------
-        bond
-            The constructed bond object.
+    Returns
+    -------
+    bond
+        The constructed bond object.
     """
 
     if type(maturity) == str:
@@ -1621,7 +1663,7 @@ def create_coupon_bond(maturity, face, frequency, rate=0):
     if frequency < 0:
         print("frequency must be nonnegative")
         return
-    
+
     if frequency == 0:
         paydates = [float(maturity)]
         payments = [float(face)]
@@ -1629,16 +1671,15 @@ def create_coupon_bond(maturity, face, frequency, rate=0):
         bond = bond_factory(paydates, payments)
         return bond
 
-
     paydates = []
     payments = []
 
-    period = 1.0/frequency
+    period = 1.0 / frequency
     date = float(maturity)
     while date > 0:
         paydates.append(date)
         date -= period
-    
+
     paydates.sort()
 
     num_of_coupons = len(paydates)
@@ -1646,8 +1687,8 @@ def create_coupon_bond(maturity, face, frequency, rate=0):
 
     for i in range(num_of_coupons):
         payments.append(coupon)
-    
-    payments[num_of_coupons-1] += face
+
+    payments[num_of_coupons - 1] += face
 
     bond = bond_factory(paydates, payments)
 

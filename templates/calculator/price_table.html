@@ -1,0 +1,51 @@
+<div class="mt-5">
+    <h3 class="display-6">Tabela de Preços</h3>
+    <p>Variação percentual do preço de um título para alterações na YTM</p>
+    <form method="POST" action="/calculator/price-table">
+        <div class="mb-3">
+            <div class="mb-3">
+                <input type="number" name="maturidade" required class="form-control" placeholder="Maturidade">
+            </div>
+            <div class="mb-3">
+                <input type="number" name="ytm" required class="form-control" placeholder="YTM">
+            </div>
+            <div class="mb-3">
+                <input type="number" name="cupom" required class="form-control" placeholder="Cupom">
+            </div>
+            <div class="mb-3">
+                <input type="number" name="valor_face" required class="form-control" placeholder="Valor de Face">
+            </div>
+            <div class="mb-3">
+                <select class="form-select" id="compounding" required name="compounding">
+                    <option selected>Compounding</option>
+                    <option value="1">Anual</option>
+                    <option value="2">Semi-anual</option>
+                    <option value="4">Quadrimestral</option>
+                    <option value="12">Mensal</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Calcular</button>
+        </div>
+    </form>
+
+    {% if taxas %}
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Taxa de Juros</th>
+                <th>Preço</th>
+                <th>Variação (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i in range(taxas|length) %}
+            <tr>
+                <td>{{ taxas[i] }}</td>
+                <td>{{ precos[i] }}</td>
+                <td>{{ variacoes[i] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
