@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 class="display-3">Calculadora de Ativos Fixos</h1>
+
+{% include "calculator/fair_price.html" %}
+
+{% include "calculator/ytm.html" %}
+
+{% include "calculator/graph.html" %}
+
+{% include "calculator/price_table.html" %}
+
+{% endblock %}
