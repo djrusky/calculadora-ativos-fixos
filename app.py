@@ -1,3 +1,6 @@
+import io
+import base64
+
 import matplotlib.pyplot as plt
 from flask import Flask, render_template, request
 
@@ -57,40 +60,41 @@ def grafico():
     compounding = float(request.form["compounding"])
 
     titulo1 = FIA.create_coupon_bond(
-        maturity=maturidade, face=valor_face, rate=cupom, frequency=1
+        maturity=maturidade, face=valor_face, rate=cupom, frequency=compounding
     )
 
     ytm1 = float(request.form["ytm"])
-    preco_justo1 = titulo1.price(ytm1, compounding=1)
+    preco_justo1 = titulo1.price(ytm1, compounding=compounding)
 
-    # Dados do título com curva de juros ajustada
     ytm2 = float(request.form["ytm2"])
-    if int(request.form["periodo"]) == None:
-        periodo = 0
-    else:
-        periodo = int(request.form["periodo"])
 
     titulo2 = FIA.create_coupon_bond(
-        maturity=maturidade - periodo, face=valor_face, rate=cupom, frequency=1
+        maturity=maturidade, face=valor_face, rate=cupom, frequency=compounding
     )
-    preco_justo2 = titulo2.price(ytm2, compounding=1)
+    preco_justo2 = titulo2.price(ytm2, compounding=compounding)
 
     # Cria as curvas
     prices = [preco_justo1, preco_justo2]
     yields = [ytm1, ytm2]
-    plt.plot(yields, prices)
+    plt.plot(yields, prices, marker='o', linestyle='--')
 
-    # Cria o gráfico
     fig, ax = plt.subplots()
     ax.plot(ytm1, preco_justo1, label="Curva original", color="purple")
     ax.plot(ytm2, preco_justo2, label="Nova curva", color="blue")
     ax.plot(ytm1, preco_justo1, "ro", label="Preço original", color="purple")
     ax.plot(ytm2, preco_justo2, "go", label="Novo preço", color="blue")
+    ax.plot(yields, prices, marker='o', linestyle='--', label="Preços")
     ax.set_xlabel("YTM")
     ax.set_ylabel("Preço")
     ax.legend()
 
-    return render_template("calculator.html")
+    # Converte a imagem em bytes base64
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    img_base64 = base64.b64encode(img.getvalue()).decode()
+
+    return render_template("calculator.html", img_base64=img_base64)
 
 
 @app.route("/calculator/price-table", methods=["POST"])
