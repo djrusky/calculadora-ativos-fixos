@@ -14,9 +14,9 @@ def index():
     return render_template("calculator.html")
 
 
-@app.route("/example")
-def example():
-    return render_template("example.html")
+@app.route("/tesouro-direto")
+def tesouro_direto():
+    return render_template("tesouro_direto.html")
 
 
 @app.route("/calculator/fair-price", methods=["POST"])
